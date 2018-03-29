@@ -60,13 +60,20 @@ For example, consider this board:
 
 #### All "sight-lines" have at most one light source
 
+This constraint ensures there are no placement conflicts.
+
 [TODO]
 
 #### Each crystal is illuminated one or more light sources of the correct color(s)
 
+This constraint ensures each crystal is solved.
+
 [TODO]
 
 #### Each square is either a light source, or has a light source in its "sight-lines"
+
+This constraint ensures the board is fully solved and there are no "blank
+spaces".
 
 [TODO]
 
