@@ -182,10 +182,10 @@ def main():
 
   # Defines the initial state of the game board (the position of the crystals).
   # See the color key above for valid inputs.
-  board = [[' ', 'R', ' ', ' '],
-           ['V', ' ', ' ', ' '],
-           [' ', ' ', ' ', 'Y'],
-           [' ', ' ', 'X', ' ']]
+  board = [[' ', ' ', ' ', 'Y'],
+           [' ', ' ', 'W', ' '],
+           [' ', 'G', ' ', ' '],
+           ['B', ' ', ' ', ' ']]
 
   # -- END ADJUSTABLE PARAMETERS --
 
@@ -281,10 +281,19 @@ def main():
   # Allow finding first one then prompt to find next or maybe all.
 
   print("\nFOUND SOLUTION")
-  for v in all_vars:
-    s = int(collector.Value(0, v))
-    if s:
-      print("%s: %s" % (re.sub(r'\(.*\)', '', str(v)), i_color(s)))
+
+  # Render solution graphically.
+  def lookup(r, c):
+    el = grid[(r, c)]
+    if el is None:
+      return '-'
+    s = int(collector.Value(0, el))
+    if not s:
+      return '-'
+    return i_color(s)
+  for r, row in enumerate(board):
+    print(' '.join(lookup(r, c) for c in range(len(row))))
+  print()
 
 
 if __name__ == '__main__':
