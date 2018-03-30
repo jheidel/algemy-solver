@@ -34,6 +34,27 @@ sudo apt-get install python3-pip
 pip3 install ortools
 ```
 
+Output will show the board that was input as well as the solution.
+
+```shell
+Time setting up constraints: 4.20ms
+Solve time: 0.28ms
+
+INPUT BOARD
+- - - R -
+- - - - -
+- G - B B
+- - - - -
+- - - Y -
+
+FOUND SOLUTION
+R - - - -
+- - - - B
+- - B - -
+- - - - B
+- Y - - -
+```
+
 # Usage
 
 Modify `algemy.py` with the board to be solved.
@@ -82,9 +103,10 @@ We first look at all the cells in the sight-line for the crystal:
 ![crystal sightlines](images/crystallines.png)
 
 For each crystal on the board, we add a solver constraint according to the
-mixing rules. For example, a crystal is illuminated RED when there exists at
-last one source in the sight-line that is RED and there are none that are
-YELLOW or BLUE. This particular rule is represented as follows in the solver:
+mixing rules. For example, a crystal is illuminated RED when there exists **at
+least one** source in the sight-line set that is RED and there **are none**
+that are YELLOW or BLUE. This particular rule is codified as follows in the
+solver:
 
 ```python
 mixing_rules = {
