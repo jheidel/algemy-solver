@@ -17,8 +17,8 @@ Hunt 19](https://puzzlehunt.research.microsoft.com/19/)).
  - [x] Expanded color mixing
  - [ ] Hexagonal board
 
-In its current state, the solver should be able to solve all hexagonal boards
-in the game.
+In its current state, the solver should be able to solve all SQUARE boards in
+the game.
 
 # Dependencies
 
@@ -86,7 +86,7 @@ The CSP solver requires defining the problem as a set of constraints about
 possible solutions.
 
 Each empty square in a board is mapped to an integer variable that can either
-be unset (0 value) or a light source (positive value, mapped from color).
+be unset (zero value) or a light source (positive value, mapped from color).
 
 We then define 3 categories of constraints on values these variables can take.
 
