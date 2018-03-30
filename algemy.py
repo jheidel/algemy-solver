@@ -7,7 +7,7 @@ import re
 # Defines a solver for the game of Algemy.
 # Work in progress.
 #
-# See line 176 for configuring a board to solve.
+# See line 185 for configuring a board to solve.
 #
 
 
@@ -168,8 +168,18 @@ EASY_MIXING_RULES = {
   'X': [('+R', '+Y', '+B')],
 }
 
-# TODO
-HARD_MIXING_RULES = {}
+HARD_MIXING_RULES = {
+  'R': [('+R', '-O', '-Y', '-G', '-B', '-V')],
+  'O': [('+R', '+Y', '-B'), ('+O', '-G', '-B', '-V')],
+  'Y': [('-R', '-O', '+Y', '-G', '-B', '-V')],
+  'G': [('-R', '+Y', '+B'), ('+G', '-V', '-R', '-O')],
+  'B': [('-R', '-O', '-Y', '-G', '+B', '-V')],
+  'V': [('+R', '-Y', '+B'), ('+V', '-O', '-Y', '-G')],
+  'W': [('-R', '-O', '-Y', '-G', '-B', '-V')],
+  'X': [('+R', '+Y', '+B'),
+        ('+R', '+G'), ('+O', '+B'), ('+Y', '+V'),
+        ('+O', '+G'), ('+G', '+V')],
+}
 
 
 def main():
@@ -178,14 +188,14 @@ def main():
   # Whether the user is allowed to input the expanded color set.
   # The first two rows of the game use the basic color set.
   # The third row allows use of the expanded set.
-  expanded_colors = False
+  expanded_colors = True
 
   # Defines the initial state of the game board (the position of the crystals).
   # See the color key above for valid inputs.
-  board = [[' ', ' ', ' ', 'Y'],
-           [' ', ' ', 'W', ' '],
-           [' ', 'G', ' ', ' '],
-           ['B', ' ', ' ', ' ']]
+  board = [[' ', ' ', 'X', ' '],
+           ['R', ' ', ' ', ' '],
+           ['W', ' ', ' ', ' '],
+           [' ', ' ', 'R', ' ']]
 
   # -- END ADJUSTABLE PARAMETERS --
 

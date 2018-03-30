@@ -14,11 +14,11 @@ Hunt 19](https://puzzlehunt.research.microsoft.com/19/)).
 
  - [x] Initial documentation
  - [x] Initial implementation (square board, simple mixing)
- - [ ] Expanded color mixing
+ - [x] Expanded color mixing
  - [ ] Hexagonal board
 
-In its current state, the solver should be able to solve anything in the first
-two rows of the game.
+In its current state, the solver should be able to solve all hexagonal boards
+in the game.
 
 # Dependencies
 
