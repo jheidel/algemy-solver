@@ -1,13 +1,21 @@
 from __future__ import print_function
 from ortools.constraint_solver import pywrapcp
 import time
+import re
+
+# 
+# Defines a solver for the game of Algemy.
+# Work in progress.
+#
+# See line 176 for configuring a board to solve.
+#
 
 
+# Board logic.
 # TODO: move board definitions to interface + class
 # TODO: implement hexagonal board variants
 
-
-def validate_board_rect(board, colors):
+def validate_board_rect(board):
   if not board:
     raise ValueError('Board has no rows')
 
@@ -19,10 +27,32 @@ def validate_board_rect(board, colors):
   if not all(len(r) == width for r in board):
     raise ValueError('Columns must all be the same size')
 
-  for r in board:
-    for c in r:
-      if c.strip() != '' and c not in colors:
-        raise ValueError('Unknown crystal color \'%s\'' % c)
+
+def validate(board, input_colors, mixing_rules):
+  validate_board_rect(board)
+
+  def get_board_colors():
+    for row in board:
+      for el in row:
+        if el.strip() != '':
+          yield el
+  board_colors = set(get_board_colors())
+
+  for c in board_colors:
+    if c not in mixing_rules:
+      raise ValueError('Missing mixing rule for board color \'%s\'' % c)
+
+  for k, v in mixing_rules.items():
+    if not v:
+      raise ValueError('Empty rules for board color \'%s\'' % k)
+    for rule in v:
+      if not rule:
+        raise ValueError('Empty rule in set for board color \'%s\'' % k)
+      for s in rule:
+        if s[0] not in ('+', '-'):
+          raise ValueError('Invalid format for mixing rule \'%s\'' % s)
+        if s[1:] not in input_colors:
+          raise ValueError('Mixing rule \'%s\' did not match an input color' % s)
 
 
 def get_dimensions_board_rect(grid):
@@ -101,28 +131,70 @@ def find_point_sightlines_rect(grid, r, c):
         else:
             break
 
+# Color key:
+#  - R: Red
+#  - O: Orange
+#  - Y: Yellow
+#  - G: Green
+#  - B: Blue
+#  - V: Violet/Pink/Purple
+#  - W: White (unset)
+#  - X: Brown (combination of multiple colors)
+
+##
+## Define all possible input colors.
+##
+
+EASY_INPUT_COLORS = ['R', 'Y', 'B']
+
+HARD_INPUT_COLORS = ['R', 'O', 'Y', 'G', 'B', 'V']
+
+## 
+## Define mapping of crystals to input colors.
+## 
+# 
+# Mixings `key` is the crystal colors, The `value` is a set of rule
+# definitions.
+#
+
+EASY_MIXING_RULES = {
+  'R': [('+R', '-Y', '-B')],
+  'O': [('+R', '+Y', '-B')],
+  'Y': [('-R', '+Y', '-B')],
+  'G': [('-R', '+Y', '+B')],
+  'B': [('-R', '-Y', '+B')],
+  'V': [('+R', '-Y', '+B')],
+  'W': [('-R', '-Y', '-B')],
+  'X': [('+R', '+Y', '+B')],
+}
+
+# TODO
+HARD_MIXING_RULES = {}
+
 
 def main():
-  # Define all possible input colors.
-  input_colors = ['R', 'B', 'Y']
+  # -- BEGIN ADJUSTABLE PARAMETERS --
 
-  # Define all possible crystal colors.
-  board_colors = ['R', 'B', 'Y']
-
-  # Define how input colors can mix to crystal colors.
-  mixings = {}  # TODO
+  # Whether the user is allowed to input the expanded color set.
+  # The first two rows of the game use the basic color set.
+  # The third row allows use of the expanded set.
+  expanded_colors = False
 
   # Defines the initial state of the game board (the position of the crystals).
-  board = [[' ', 'Y', ' ', ' ', ' '],
-           [' ', ' ', ' ', ' ', ' '],
-           ['R', ' ', ' ', ' ', 'R'],
-           [' ', ' ', ' ', ' ', ' '],
-           [' ', ' ', ' ', 'Y', ' ']]
+  # See the color key above for valid inputs.
+  board = [[' ', 'R', ' ', ' '],
+           ['V', ' ', ' ', ' '],
+           [' ', ' ', ' ', 'Y'],
+           [' ', ' ', 'X', ' ']]
 
-  # -- End adjustable parameters --
+  # -- END ADJUSTABLE PARAMETERS --
+
+  # Identify the input colors and mixing rules used based on the level.
+  input_colors = HARD_INPUT_COLORS if expanded_colors else EASY_INPUT_COLORS
+  mixing_rules = HARD_MIXING_RULES if expanded_colors else EASY_MIXING_RULES
 
   try:
-    validate_board_rect(board, board_colors)
+    validate(board, input_colors, mixing_rules)
   except ValueError as err:
     print('Board validation failed: %s' % err)
     return
@@ -135,32 +207,84 @@ def main():
   grid = {}
   for r, row in enumerate(board):
     for c, el in enumerate(row):
-      if el in board_colors:
-        grid[(r, c)] = None  # crystal position
+      if el.strip() == '':
+        # A solvable position.
+        grid[(r, c)] = solver.IntVar(0, len(input_colors), '<Row %i, Col %i>' % (r, c))
       else:
-        grid[(r, c)] = solver.IntVar(0, len(input_colors), '<r%i,c%i>' % (r, c))
+        grid[(r, c)] = None  # crystal position
 
-  # TODO: CONSTRAINT - crystal illumination
+  # Helper: converts an input color to the int var space.
+  color_i = lambda c: input_colors.index(c) + 1
+  # Helper: converts an int var to the input color string.
+  i_color = lambda i: input_colors[i - 1]
 
-  # TODO: CONSTRAINT - board sightlines
-  sightlines = list(find_board_sightlines_rect(grid))
-  print("Board sightlines: %s\n\n" % sightlines)
+  # CONSTRAINT - crystal illumination
+  for (r, c), el in grid.items():
+    if el is not None:
+      continue  # only look at crystals
+    sight_points = list(find_point_sightlines_rect(grid, r, c))
 
-  # TODO: CONSTRAINT - all points solved
-  test = list(find_point_sightlines_rect(grid, 4, 3))
-  print("Point sightlines: %s\n\n" % test)
+    or_rules = []
+    for mix_rule in mixing_rules[board[r][c]]:
+      pos_colors = [s[1:] for s in mix_rule if s[0] == '+']
+      def get_pos_rules():
+        for color in pos_colors:
+          yield solver.Sum(p == color_i(color) for p in sight_points) >= 1
 
+      neg_colors = [s[1:] for s in mix_rule if s[0] == '-']
+      def get_neg_rules():
+        for color in neg_colors:
+          yield solver.Sum(p == color_i(color) for p in sight_points) == 0
 
-  print("Grid %s\n\n" % grid)
+      comb_rules = list(get_pos_rules()) + list(get_neg_rules())
+      final_rule = solver.Sum(comb_rules) == len(comb_rules) # ALL
+      or_rules.append(final_rule)
+
+    solver.Add(solver.Sum(or_rules) > 0) # ANY
+
+  # CONSTRAINT - board sightlines
+  for sightline in find_board_sightlines_rect(grid):
+    # At one item can be set (non-zero) in a sightline.
+    solver.Add(solver.Sum(x > 0 for x in sightline) <= 1)
+
+  # CONSTRAINT - all points solved
+  for (r, c), el in grid.items():
+    if el is None:
+      continue  # ignore crystals
+    # Either the point is non-empty or a point in its sightline is non-empty.
+    solver.Add(el + solver.Sum(find_point_sightlines_rect(grid, r, c)) > 0)
+
   all_vars = list(filter(None, grid.values()))
-
   vars_phase = solver.Phase(all_vars,
                             solver.INT_VAR_DEFAULT,
                             solver.INT_VALUE_DEFAULT)
 
   print("Time setting up constraints: %.2fms" % ((time.time() - start) * 1000))
 
-  # TODO: solve and print solution
+  solution = solver.Assignment()
+  solution.Add(all_vars)
+  collector = solver.FirstSolutionCollector(solution)
+  start = time.time()
+  solver.Solve(vars_phase, [collector])
+
+  print("Solve time: %.2fms" % (1000 * (time.time() - start)))
+
+  print("\nINPUT BOARD")
+  for r in board:
+    print(' '.join((c if c.strip() != '' else '-') for c in r))
+
+  if collector.SolutionCount() < 1:
+    print("\nNO SOLUTION FOUND")
+    return
+
+  # TODO iterate over all solutions instead of using collector.
+  # Allow finding first one then prompt to find next or maybe all.
+
+  print("\nFOUND SOLUTION")
+  for v in all_vars:
+    s = int(collector.Value(0, v))
+    if s:
+      print("%s: %s" % (re.sub(r'\(.*\)', '', str(v)), i_color(s)))
 
 
 if __name__ == '__main__':
