@@ -7,7 +7,7 @@ import re
 # Defines a solver for the game of Algemy.
 # Work in progress.
 #
-# See line 185 for configuring a board to solve.
+# See line 197 for configuring a board to solve.
 #
 
 
@@ -154,8 +154,19 @@ HARD_INPUT_COLORS = ['R', 'O', 'Y', 'G', 'B', 'V']
 ## 
 # 
 # Mixings `key` is the crystal colors, The `value` is a set of rule
-# definitions.
+# definitions. for example, the following rule
 #
+#   'O': [('+R', '+Y', '-B'), ('+O', '-G', '-B', '-V')],
+#
+# Maps to this logical statement:
+# 
+#   An ORANGE crystal is satisfied when:
+#     (There exists a RED and YELLOW source in its sight-lines,
+#      but no BLUE)
+#     OR
+#     (There exists an ORANGE crystal in its sight-lines,
+#      but no GREEN, BLUE, or VIOLET)
+#     
 
 EASY_MIXING_RULES = {
   'R': [('+R', '-Y', '-B')],
