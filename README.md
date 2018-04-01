@@ -103,14 +103,15 @@ We first look at all the cells in the sight-line for the crystal:
 ![crystal sightlines](images/crystallines.png)
 
 For each crystal on the board, we add a solver constraint according to the
-mixing rules. For example, a crystal is illuminated RED when there exists **at
-least one** source in the sight-line set that is RED and there **are none**
-that are YELLOW or BLUE. This particular rule is codified as follows in the
-solver:
+mixing rules. For example, when the allowed input colors are RED, YELLOW, and
+BLUE, a crystal is illuminated VIOLET when there exists **at least one** source
+in the sight-line that is RED and **at least one** source that is BLUE, and
+there **are none** that are YELLOW. This particular rule is codified as follows
+in the solver:
 
 ```python
 mixing_rules = {
-    'R': [('+R', '-Y', '-B')],
+    'V': [('+R', '-Y', '+B')],
 }
 ```
 

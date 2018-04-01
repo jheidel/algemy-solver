@@ -193,22 +193,7 @@ HARD_MIXING_RULES = {
 }
 
 
-def main():
-  # -- BEGIN ADJUSTABLE PARAMETERS --
-
-  # Whether the user is allowed to input the expanded color set.
-  # The first two rows of the game use the basic color set.
-  # The third row allows use of the expanded set.
-  expanded_colors = True
-
-  # Defines the initial state of the game board (the position of the crystals).
-  # See the color key above for valid inputs.
-  board = [[' ', ' ', 'X', ' '],
-           ['R', ' ', ' ', ' '],
-           ['W', ' ', ' ', ' '],
-           [' ', ' ', 'R', ' ']]
-
-  # -- END ADJUSTABLE PARAMETERS --
+def solve_board(board, expanded_colors, verbose=False):
 
   # Identify the input colors and mixing rules used based on the level.
   input_colors = HARD_INPUT_COLORS if expanded_colors else EASY_INPUT_COLORS
@@ -280,7 +265,8 @@ def main():
                             solver.INT_VAR_DEFAULT,
                             solver.INT_VALUE_DEFAULT)
 
-  print("Time setting up constraints: %.2fms" % ((time.time() - start) * 1000))
+  if verbose:
+    print("Time setting up constraints: %.2fms" % ((time.time() - start) * 1000))
 
   solution = solver.Assignment()
   solution.Add(all_vars)
@@ -288,33 +274,63 @@ def main():
   start = time.time()
   solver.Solve(vars_phase, [collector])
 
-  print("Solve time: %.2fms" % (1000 * (time.time() - start)))
-
-  print("\nINPUT BOARD")
-  for r in board:
-    print(' '.join((c if c.strip() != '' else '-') for c in r))
+  if verbose:
+    print("Solve time: %.2fms" % (1000 * (time.time() - start)))
 
   if collector.SolutionCount() < 1:
     print("\nNO SOLUTION FOUND")
-    return
+    return None
 
   # TODO iterate over all solutions instead of using collector.
   # Allow finding first one then prompt to find next or maybe all.
 
-  print("\nFOUND SOLUTION")
-
-  # Render solution graphically.
   def lookup(r, c):
     el = grid[(r, c)]
     if el is None:
-      return '-'
+      return ' '
     s = int(collector.Value(0, el))
     if not s:
-      return '-'
+      return ' '
     return i_color(s)
+
+  solution = []
   for r, row in enumerate(board):
-    print(' '.join(lookup(r, c) for c in range(len(row))))
+    solution.append([lookup(r, c) for c in range(len(row))])
+  return solution
+
+
+def main():
+  # -- BEGIN ADJUSTABLE PARAMETERS --
+
+  # Whether the user is allowed to input the expanded color set.
+  # The first two rows of the game use the basic color set.
+  # The third row allows use of the expanded set.
+  expanded_colors = True
+
+  # Defines the initial state of the game board (the position of the crystals).
+  # See the color key above for valid inputs.
+  board = [[' ', ' ', ' ', ' ', ' '],
+           ['B', ' ', ' ', ' ', 'O'],
+           [' ', ' ', 'B', ' ', ' '],
+           [' ', ' ', ' ', ' ', ' '],
+           ['V', ' ', ' ', ' ', 'X']]
+
+  # -- END ADJUSTABLE PARAMETERS --
+
+  print("INPUT BOARD")
+  for r in board:
+    print(' '.join((c if c.strip() != '' else '-') for c in r))
   print()
+
+  solution = solve_board(board, expanded_colors, verbose=True)
+  if solution is None:
+    return
+
+  print("\nFOUND SOLUTION")
+
+  # Render solution graphically.
+  for row in solution:
+    print(' '.join(el.replace(' ','-') for el in row))
 
 
 if __name__ == '__main__':
