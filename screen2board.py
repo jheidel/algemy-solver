@@ -11,14 +11,14 @@ TOP_CROP_FRAC = 0.25
 # Average colors for each board crystal.
 COLOR_MAP = {
   ' ': (255, 255, 255),
-  'R': (135, 135, 178),
-  'O': (87, 136, 177),
-  'Y': (130, 174, 174),
-  'G': (82, 136, 82),
-  'B': (175, 145, 145),
-  'V': (162, 90, 162),
-  'W': (214, 214, 214),
-  'X': (34, 66, 99),
+  'R': (159, 159, 187),
+  'O': (126, 158, 185),
+  'Y': (155, 183, 183),
+  'G': (127, 161, 127), 
+  'B': (187, 168, 168),
+  'V': (175, 127, 175),
+  'W': (221, 221, 221),
+  'X': (102, 122, 142),
 }
 
 # Possible colors for the color-wheel, clockwise.
@@ -49,6 +49,7 @@ def main():
   # ARGS
   img = cv2.imread('/tmp/screen.png')
   expanded_colors = True
+  debug = False
   # END ARGS
 
   height, width = img.shape[:2]
@@ -102,9 +103,13 @@ def main():
     for x, y in row:
       dilate = int(spacing / 4)
       sample = img[(y-dilate):(y+dilate), (x-dilate):(x+dilate)]
+
+      # TODO: filter out black and white pixels for more color averaging that's
+      # less dependent on sample size.
       avg_color = tuple(np.mean(sample, axis=(0,1)))
       color = closest_color(*avg_color)
       board_row.append(color)
+
     board.append(board_row)
 
   print("# DETECTED")
@@ -148,8 +153,9 @@ def main():
       print("adb shell input tap %i %i" % (x + xd, y + yd))
 
   # Show image processing debug.
-  # cv2.imshow('debug', img)
-  # cv2.waitKey(0)
+  if debug:
+    cv2.imshow('debug', img)
+    cv2.waitKey(0)
 
 
 if __name__ == '__main__':
