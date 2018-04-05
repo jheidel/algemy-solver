@@ -108,6 +108,13 @@ class HexBoard:
     x = -y - z
     return (x, y, z)
 
+  def board_iterator(self, x, y, z, dx, dy, dz):
+    while (x, y, z) in self.cube_grid:
+      yield self.cube_grid[(x, y, z)]
+      x += dx
+      y += dy
+      z += dz
+
   def find_board_sightlines(self):
     """Yields a list of points for each sightline on the board."""
     def grid_iter():
@@ -115,33 +122,31 @@ class HexBoard:
       while any(k[0] == x for k in self.cube_grid.keys()):
         y = min(k[1] for k in self.cube_grid.keys() if k[0] == x)
         z = -x-y
-        yield list(self.point_iterator(x, y, z, 0, 1, -1, incl_point=True))
+        yield list(self.board_iterator(x, y, z, 0, 1, -1))
         x += 1
 
       y = min(p[1] for p in self.cube_grid.keys())
       while any(k[1] == y for k in self.cube_grid.keys()):
         x = min(k[0] for k in self.cube_grid.keys() if k[1] == y)
         z = -x-y
-        yield list(self.point_iterator(x, y, z, 1, 0, -1, incl_point=True))
+        yield list(self.board_iterator(x, y, z, 1, 0, -1))
         y += 1
 
       z = min(p[2] for p in self.cube_grid.keys())
       while any(k[2] == z for k in self.cube_grid.keys()):
         x = min(k[0] for k in self.cube_grid.keys() if k[2] == z)
         y = -x-z
-        yield list(self.point_iterator(x, y, z, 1, -1, 0, incl_point=True))
+        yield list(self.board_iterator(x, y, z, 1, -1, 0))
         z += 1
 
     for s in to_board_sightlines(grid_iter()):
         yield s
 
-  def point_iterator(self, x, y, z, dx, dy, dz, incl_point=False):
+  def point_iterator(self, x, y, z, dx, dy, dz):
     while True:
-      if not incl_point:
-        x += dx
-        y += dy
-        z += dz
-      incl_point = False
+      x += dx
+      y += dy
+      z += dz
       if (x, y, z) not in self.cube_grid:
         break
       el = self.cube_grid[(x, y, z)]
