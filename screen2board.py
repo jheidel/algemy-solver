@@ -5,18 +5,8 @@ import math
 import algemy
 
 
-# Pixel locations for the top of the board for each board width.
-# Based on 1080x1920 display resolution on Nexus 5X.
-BOARD_TOP = {
-    4: ((139, 605), (951, 605)),
-    5: ((112, 580), (960, 580)),
-    6: ((102, 570), (980, 570)),
-    7: ((92, 560), (987, 560)),
-}
-
-DILATE = 0.2
-WHEEL_RF = 0.75
-
+# Fraction of the top of the screen taken up by the menu.
+TOP_CROP_FRAC = 0.25
 
 # Average colors for each board crystal.
 COLOR_MAP = {
@@ -31,7 +21,11 @@ COLOR_MAP = {
   'X': (34, 66, 99),
 }
 
+# Possible colors for the color-wheel, clockwise.
 COLORS = ['R', 'O', 'Y', 'G', 'B', 'V']
+
+# Color wheel radius as a fraction of board spacing.
+WHEEL_RF = 0.75
 
 
 def closest_color(r, g, b):
@@ -45,34 +39,73 @@ def closest_color(r, g, b):
   return ret
 
 
+def dist(p1, p2):
+  x1, y1 = p1
+  x2, y2 = p2
+  return int(math.sqrt((x2 - x1)**2 + (y2 - y1)**2))
+
 def main():
   # TODO: make args
+  # ARGS
   img = cv2.imread('/tmp/screen.png')
-  board_size = 7
   expanded_colors = True
+  # END ARGS
 
-  ##
+  height, width = img.shape[:2]
 
-  top_line = BOARD_TOP[board_size]
+  # Crop out the top menu bar.
+  img = img[int(height * TOP_CROP_FRAC):height, 0:width]
 
-  top_left = top_line[0]
-  top_width = top_line[1][0] - top_line[0][0]
-  box_width = top_width / board_size
+  # Convert to black & white.
+  imggray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+  _, thresh = cv2.threshold(imggray, 127, 255, 0)
+  _, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-  grid = {}
-  for r in range(board_size):
-    for c in range(board_size):
-      x = int(top_left[0] + box_width/2 + box_width * c)
-      y = int(top_left[1] + box_width/2 + box_width * r)
-      dilate = int(box_width * DILATE)
+  # Traverse the contour tree to extract the inside of the grid (level 2 contours)
+  l2_contours = []
+  def traverse(i, level):
+    while i != -1:
+      if level == 2:
+        l2_contours.append(contours[i])
+      i, prev, child, parent = hierarchy[0][i]
+      if child != -1:
+        traverse(child, level + 1)
+  traverse(0, 0)
+
+  # Find center points of each grid square.
+  centers = []
+  for c in l2_contours:
+    (x, y), _ = cv2.minEnclosingCircle(c)
+    centers.append((int(x), int(y)))
+
+  # Determine the spacing of our grid.
+  spacing = min(dist(centers[0], c) for c in centers[1:])
+
+  # Generate a top-down, left-right sort and split into rows.
+  rows = {}
+  for x, y in centers:
+    closest_row = None
+    for ry in rows.keys():
+      if abs(ry - y) < spacing / 2:
+        closest_row = ry
+    if closest_row:
+      rows[closest_row].append((x, y))
+    else:
+      rows[y] = [(x, y)]
+  rows = list(rows.items())
+  rows.sort()  # Sort top-down.
+  rows = [sorted(row) for _, row in rows]  # Sort left-right.
+
+  board = []
+  for row in rows:
+    board_row = []
+    for x, y in row:
+      dilate = int(spacing / 4)
       sample = img[(y-dilate):(y+dilate), (x-dilate):(x+dilate)]
       avg_color = tuple(np.mean(sample, axis=(0,1)))
       color = closest_color(*avg_color)
-      grid[(r,c)] = color
-
-  board = [] 
-  for r in range(board_size):
-    board.append([grid[(r,c)] for c in range(board_size)])
+      board_row.append(color)
+    board.append(board_row)
 
   print("# DETECTED")
   for row in board:
@@ -89,24 +122,34 @@ def main():
     print('# ' + ' '.join(el.replace(' ','-') for el in row))
   print()
 
-  for r in range(board_size):
-    for c in range(board_size):
-      x = int(top_left[0] + box_width/2 + box_width * c)
-      y = int(top_left[1] + box_width/2 + box_width * r)
+  for r, row in enumerate(solution):
+    for c, color in enumerate(row):
+      x = rows[r][c][0]
+      y = rows[r][c][1]
+      cv2.circle(img, (x, y), 2, (0, 255, 0), 2)
 
-      color = solution[r][c]
       if color.strip() == '':
         continue
+
+      cv2.circle(img, (x, y), 2, (0, 0, 255), 3)
+      cv2.putText(img, str(color), (x - 5, y - 10), cv2.FONT_HERSHEY_SIMPLEX,  1, (0, 0, 255), 2)
+
+      # Compensate for top cropping.
+      y += int(height * TOP_CROP_FRAC)
 
       # Tap on square to bring up color wheel.
       print("adb shell input tap %i %i" % (x, y))
 
       deg = (360 / len(COLORS)) * COLORS.index(color)
-      xd = math.sin(math.radians(deg)) * WHEEL_RF * box_width
-      yd = -1 * math.cos(math.radians(deg)) * WHEEL_RF * box_width
+      xd = math.sin(math.radians(deg)) * WHEEL_RF * spacing
+      yd = -1 * math.cos(math.radians(deg)) * WHEEL_RF * spacing
 
       # Tap on the correct color.
       print("adb shell input tap %i %i" % (x + xd, y + yd))
+
+  # Show image processing debug.
+  # cv2.imshow('debug', img)
+  # cv2.waitKey(0)
 
 
 if __name__ == '__main__':
