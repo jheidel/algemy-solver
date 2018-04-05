@@ -3,34 +3,17 @@ from ortools.constraint_solver import pywrapcp
 import time
 import re
 
+from board import RectBoard
+from board import HexBoard
+
 # 
 # Defines a solver for the game of Algemy.
-# Work in progress.
 #
-# See line 197 for configuring a board to solve.
+# See line 219 for configuring a board to solve.
 #
 
 
-# Board logic.
-# TODO: move board definitions to interface + class
-# TODO: implement hexagonal board variants
-
-def validate_board_rect(board):
-  if not board:
-    raise ValueError('Board has no rows')
-
-  height = len(board) 
-  width = max(len(r) for r in board)
-  if not width:
-    raise ValueError('Board has no columns')
-
-  if not all(len(r) == width for r in board):
-    raise ValueError('Columns must all be the same size')
-
-
-def validate(board, input_colors, mixing_rules):
-  validate_board_rect(board)
-
+def validate_colors(board, input_colors, mixing_rules):
   def get_board_colors():
     for row in board:
       for el in row:
@@ -54,82 +37,6 @@ def validate(board, input_colors, mixing_rules):
         if s[1:] not in input_colors:
           raise ValueError('Mixing rule \'%s\' did not match an input color' % s)
 
-
-def get_dimensions_board_rect(grid):
-    rows = max(r for r, _ in list(grid.keys())) + 1
-    cols = max(c for _, c in list(grid.keys())) + 1
-    return rows, cols
-
-
-def find_board_sightlines_rect(grid):
-    """Yields lists for each sightline on the board."""
-    rows, cols = get_dimensions_board_rect(grid)
-
-    # TODO: refactor this to avoid duplication. Maybe make it common so it can
-    # be re-used for hexagonal case.
-   
-    for r in range(rows):
-        acc = []
-        for c in range(cols):
-            el = grid[(r, c)]
-            if el:
-                acc.append(el)
-            else:
-                if len(acc) > 1:
-                    yield list(acc)
-                acc[:] = []
-        if len(acc) > 1:
-            yield list(acc)
-
-    for c in range(cols):
-        acc = []
-        for r in range(rows):
-            el = grid[(r, c)]
-            if el:
-                acc.append(el)
-            else:
-                if len(acc) > 1:
-                    yield list(acc)
-                acc[:] = []
-        if len(acc) > 1:
-            yield list(acc)
-
-
-def find_point_sightlines_rect(grid, r, c):
-    """Yields all points that are visible from a given point."""
-    rows, cols = get_dimensions_board_rect(grid)
-
-    # TODO: refactor this to avoid duplication. Maybe make it common so it can
-    # be re-used for hexagonal case.
-
-    # Top
-    for x in range(r, 0, -1):
-        el = grid[(x - 1, c)]
-        if el:
-            yield el
-        else:
-            break
-    # Bottom
-    for x in range(r, rows - 1):
-        el = grid[(x + 1, c)]
-        if el:
-            yield el
-        else:
-            break
-    # Left
-    for x in range(c, 0, -1):
-        el = grid[(r, x - 1)]
-        if el:
-            yield el
-        else:
-            break
-    # Right
-    for x in range(c, cols - 1):
-        el = grid[(r, x + 1)]
-        if el:
-            yield el
-        else:
-            break
 
 # Color key:
 #  - R: Red
@@ -200,7 +107,11 @@ def solve_board(board, expanded_colors, verbose=False):
   mixing_rules = HARD_MIXING_RULES if expanded_colors else EASY_MIXING_RULES
 
   try:
-    validate(board, input_colors, mixing_rules)
+    if RectBoard.is_rect_board(board):
+      RectBoard.validate(board)
+    else:
+      HexBoard.validate(board)
+    validate_colors(board, input_colors, mixing_rules)
   except ValueError as err:
     print('Board validation failed: %s' % err)
     return
@@ -219,6 +130,11 @@ def solve_board(board, expanded_colors, verbose=False):
       else:
         grid[(r, c)] = None  # crystal position
 
+  if RectBoard.is_rect_board(board):
+    b = RectBoard(grid)
+  else:
+    b = HexBoard(grid)
+
   # Helper: converts an input color to the int var space.
   color_i = lambda c: input_colors.index(c) + 1
   # Helper: converts an int var to the input color string.
@@ -228,7 +144,7 @@ def solve_board(board, expanded_colors, verbose=False):
   for (r, c), el in grid.items():
     if el is not None:
       continue  # only look at crystals
-    sight_points = list(find_point_sightlines_rect(grid, r, c))
+    sight_points = list(b.find_point_sightlines(r, c))
 
     or_rules = []
     for mix_rule in mixing_rules[board[r][c]]:
@@ -249,7 +165,7 @@ def solve_board(board, expanded_colors, verbose=False):
     solver.Add(solver.Sum(or_rules) > 0) # ANY
 
   # CONSTRAINT - board sightlines
-  for sightline in find_board_sightlines_rect(grid):
+  for sightline in b.find_board_sightlines():
     # At one item can be set (non-zero) in a sightline.
     solver.Add(solver.Sum(x > 0 for x in sightline) <= 1)
 
@@ -258,7 +174,7 @@ def solve_board(board, expanded_colors, verbose=False):
     if el is None:
       continue  # ignore crystals
     # Either the point is non-empty or a point in its sightline is non-empty.
-    solver.Add(el + solver.Sum(find_point_sightlines_rect(grid, r, c)) > 0)
+    solver.Add(el + solver.Sum(b.find_point_sightlines(r, c)) > 0)
 
   all_vars = list(filter(None, grid.values()))
   vars_phase = solver.Phase(all_vars,
@@ -305,15 +221,15 @@ def main():
   # Whether the user is allowed to input the expanded color set.
   # The first two rows of the game use the basic color set.
   # The third row allows use of the expanded set.
-  expanded_colors = True
+  expanded_colors = False
 
   # Defines the initial state of the game board (the position of the crystals).
   # See the color key above for valid inputs.
-  board = [[' ', ' ', ' ', ' ', ' '],
-           ['B', ' ', ' ', ' ', 'O'],
-           [' ', ' ', 'B', ' ', ' '],
-           [' ', ' ', ' ', ' ', ' '],
-           ['V', ' ', ' ', ' ', 'X']]
+  board = [[' ', ' ', ' '],
+           ['R', 'R', ' ', ' '],
+           ['B', ' ', ' ', ' ', ' '],
+           ['Y', 'Y', ' ', ' '],
+           [' ', ' ', ' ']] 
 
   # -- END ADJUSTABLE PARAMETERS --
 

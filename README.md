@@ -15,7 +15,10 @@ Hunt 19](https://puzzlehunt.research.microsoft.com/19/)).
  - [x] Initial documentation
  - [x] Initial implementation (square board, simple mixing)
  - [x] Expanded color mixing
- - [ ] Hexagonal board
+ - [x] Hexagonal board
+ - [ ] OpenCV support for all boards
+ - [ ] Publish solutions
+
 
 In its current state, the solver should be able to solve all SQUARE boards in
 the game.
