@@ -21,12 +21,12 @@ Hunt 19](https://puzzlehunt.research.microsoft.com/19/)).
 
 The solver is capable of solving all boards in the game.
 
-![all levels solved](images/solved.png)
+![all levels solved](images/solve.png)
 
 The solver can also solve levels in the game directly using a combination of
 OpenCV and adb commands.
 
-[![automatic solver](images/ytthumb.jpg)](https://youtu.be/cIzrAp9N9vw)
+[![automatic solver](images/yt.jpg)](https://youtu.be/cIzrAp9N9vw)
 
 # Dependencies
 
