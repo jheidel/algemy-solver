@@ -1,8 +1,10 @@
 from __future__ import print_function
-import numpy as np
+import algemy
+import argparse
 import cv2
 import math
-import algemy
+import numpy as np
+import sys
 
 
 # Fraction of the top of the screen taken up by the menu.
@@ -44,13 +46,19 @@ def dist(p1, p2):
   x2, y2 = p2
   return int(math.sqrt((x2 - x1)**2 + (y2 - y1)**2))
 
+
 def main():
-  # TODO: make args
-  # ARGS
-  img = cv2.imread('/tmp/screen.png')
-  expanded_colors = True
-  debug = False
-  # END ARGS
+  parser = argparse.ArgumentParser(
+      description='Solve an Algemy board from a screenshot.')
+  parser.add_argument('screenshot', help='path to screenshot')
+  parser.add_argument('-x', '--all_colors', help='enable debug mode', action='store_true')
+  parser.add_argument('-v', '--debug', help='enable debug mode', action='store_true')
+  args = parser.parse_args()
+
+  img = cv2.imread(args.screenshot)
+  if img is None:
+    print('# Missing input image')
+    sys.exit(1)
 
   height, width = img.shape[:2]
 
@@ -61,6 +69,10 @@ def main():
   imggray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
   _, thresh = cv2.threshold(imggray, 127, 255, 0)
   _, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+  if contours is None or hierarchy is None:
+    print('# Missing contours')
+    sys.exit(1)
 
   # Traverse the contour tree to extract the inside of the grid (level 2 contours)
   l2_contours = []
@@ -117,10 +129,10 @@ def main():
     print('# ' + ' '.join(el.replace(' ','-') for el in row))
   print()
 
-  solution = algemy.solve_board(board, expanded_colors)
+  solution = algemy.solve_board(board, args.all_colors)
   if not solution:
     print("# No solution.")
-    return
+    sys.exit(1)
 
   print("# SOLUTION")
   for row in solution:
@@ -153,7 +165,7 @@ def main():
       print("adb shell input tap %i %i" % (x + xd, y + yd))
 
   # Show image processing debug.
-  if debug:
+  if args.debug:
     cv2.imshow('debug', img)
     cv2.waitKey(0)
 
