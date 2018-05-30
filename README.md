@@ -12,13 +12,6 @@ Hunt 19](https://puzzlehunt.research.microsoft.com/19/)).
 
 # Progress
 
- - [x] Initial documentation
- - [x] Initial implementation (square board, simple mixing)
- - [x] Expanded color mixing
- - [x] Hexagonal board
- - [x] OpenCV support for all boards
- - [ ] Publish solutions
-
 The solver is capable of solving all boards in the game.
 
 ![all levels solved](images/solve.png)
@@ -26,7 +19,7 @@ The solver is capable of solving all boards in the game.
 The solver can also solve levels in the game directly using a combination of
 OpenCV and adb commands.
 
-[![automatic solver](images/yt.jpg)](https://youtu.be/cIzrAp9N9vw)
+[![automatic solver](https://media.giphy.com/media/f9RImw0T1sdJoNsVji/giphy.gif)](https://youtu.be/cIzrAp9N9vw)
 
 # Dependencies
 
