@@ -4,7 +4,7 @@ Algemy is a logic game. "Light sources" are placed on the board in order to
 illuminate a set of crystals. Each crystal must be set to a certain color, and
 the entire board must be covered by light.
 
- - [Google Play](https://play.google.com/store/apps/details?id=com.KennyYoung.AlgemyGame)
+ - [Google Play](https://play.google.com/store/apps/details?id=com.KennyYoung.AlgemySlideU)
  - [Apple App Store](https://itunes.apple.com/us/app/algemy/id1355522887?mt=8)
 
 This project defines a solver of this game (which could be useful for [Puzzle
