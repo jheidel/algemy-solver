@@ -19,7 +19,7 @@ The solver is capable of solving all boards in the game.
 The solver can also solve levels in the game directly using a combination of
 OpenCV and adb commands.
 
-[![automatic solver](https://media.giphy.com/media/f9RImw0T1sdJoNsVji/giphy.gif)](https://youtu.be/cIzrAp9N9vw)
+[![automatic solver](images/video.webp)](https://youtu.be/cIzrAp9N9vw)
 
 # Dependencies
 
